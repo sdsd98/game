@@ -104,7 +104,8 @@
 
         let pipes = [];
         let pipeWidth = 52;
-        let pipeGap = 110; // Increased gap size
+        let pipeGap = 110; // This is the vertical gap for the bird to fly through
+        let pipeHorizontalSpacing = 160; // This controls the horizontal distance between pipes
         let frame = 0;
         let score = 0;
         let gameRunning = true;
@@ -139,8 +140,9 @@
             frame = 0;
 
             // Add initial pipes with good spacing
-            addPipe(canvas.width + 100); // First pipe well off-screen to start
-            addPipe(canvas.width + 100 + 150); // Second pipe further out
+            // We ensure the first pipe appears after a certain distance
+            addPipe(canvas.width + pipeHorizontalSpacing); // First pipe
+            addPipe(canvas.width + pipeHorizontalSpacing * 2); // Second pipe further out
         }
 
         function updateGame() {
@@ -162,9 +164,11 @@
             }
 
             // Pipe generation and movement
-            if (frame % 90 === 0 && gameStarted) { // Generate a new pipe every 90 frames, only after game starts
+            // Generate a new pipe when the last pipe is halfway across the screen
+            if (pipes.length === 0 || (pipes[pipes.length - 1].x < canvas.width - pipeHorizontalSpacing && gameStarted)) {
                 addPipe(canvas.width);
             }
+
 
             for (let i = 0; i < pipes.length; i++) {
                 let p = pipes[i];
