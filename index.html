@@ -17,7 +17,7 @@
         }
 
         #gameCanvas {
-            background-color: #000;
+            background-color: #000; /* You can change this to a lighter color or use an image */
             border: 5px solid #333;
             display: block;
         }
@@ -99,29 +99,21 @@
             lift: -4,
             velocity: 0,
             frame: 0,
-            animation: [0, 1, 2, 1] // Simple flapping animation
+            animation: [0, 1, 2, 1] // Simple flapping animation (if using sprites)
         };
 
         let pipes = [];
         let pipeWidth = 52;
-        let pipeGap = 100;
+        let pipeGap = 110; // Increased gap size
         let frame = 0;
         let score = 0;
         let gameRunning = true;
         let gameStarted = false; // To prevent immediate bird drop
 
-        // Images (you might need to host these or use base64 for a single file)
-        // For simplicity, we'll draw rectangles. If you want images, you'd load them like this:
-        // const birdImg = new Image(); birdImg.src = 'path/to/bird.png';
-        // const backgroundImg = new Image(); backgroundImg.src = 'path/to/background.png';
-        // const pipeNorthImg = new Image(); pipeNorthImg.src = 'path/to/pipeNorth.png';
-        // const pipeSouthImg = new Image(); pipeSouthImg.src = 'path/to/pipeSouth.png';
-
         // Draw functions (using rectangles for simplicity)
         function drawBird() {
             ctx.fillStyle = 'yellow';
             ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
-            // If using images: ctx.drawImage(birdImg, bird.frame * bird.width, 0, bird.width, bird.height, bird.x, bird.y, bird.width, bird.height);
         }
 
         function drawPipes() {
@@ -145,9 +137,10 @@
             gameStarted = false;
             gameOverScreen.style.display = 'none';
             frame = 0;
-            // Add initial pipes to avoid a blank screen at the start
-            addPipe();
-            addPipe(); // Add a second one further out
+
+            // Add initial pipes with good spacing
+            addPipe(canvas.width + 100); // First pipe well off-screen to start
+            addPipe(canvas.width + 100 + 150); // Second pipe further out
         }
 
         function updateGame() {
@@ -162,14 +155,15 @@
                 bird.y = canvas.height / 2;
             }
 
-            // Ground collision
+            // Ground/Ceiling collision
             if (bird.y + bird.height >= canvas.height || bird.y <= 0) {
                 endGame();
+                return; // Stop updating after game over
             }
 
             // Pipe generation and movement
-            if (frame % 90 === 0) { // Generate a new pipe every 90 frames
-                addPipe();
+            if (frame % 90 === 0 && gameStarted) { // Generate a new pipe every 90 frames, only after game starts
+                addPipe(canvas.width);
             }
 
             for (let i = 0; i < pipes.length; i++) {
@@ -183,6 +177,7 @@
                     (bird.y < p.y || bird.y + bird.height > p.y + pipeGap)
                 ) {
                     endGame();
+                    return; // Stop updating after game over
                 }
 
                 // Remove off-screen pipes
@@ -191,6 +186,7 @@
                 }
 
                 // Score
+                // Check if the bird has passed the pipe's x position and hasn't scored yet
                 if (p.x + pipeWidth < bird.x && !p.scored) {
                     score++;
                     scoreDisplay.textContent = score;
@@ -198,11 +194,7 @@
                 }
             }
 
-            // Animation frame for bird (if using sprite sheet)
-            bird.frame = (bird.frame + 0.1) % bird.animation.length; // Adjust speed
-
             ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
-            // If using background image: ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
             drawPipes();
             drawBird();
 
@@ -210,12 +202,16 @@
             requestAnimationFrame(updateGame);
         }
 
-        function addPipe() {
-            let minHeight = 50;
-            let maxHeight = canvas.height - pipeGap - minHeight;
-            let pipeY = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+        function addPipe(startX) {
+            // Ensure there's always a valid gap for the bird
+            const minPipeHeight = 50; // Minimum height for top or bottom pipe
+            const maxPipeHeight = canvas.height - pipeGap - minPipeHeight; // Max height for top pipe to leave space for bottom pipe
+            
+            // Random Y position for the bottom of the top pipe
+            let pipeY = Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1)) + minPipeHeight;
+
             pipes.push({
-                x: canvas.width,
+                x: startX,
                 y: pipeY,
                 scored: false
             });
@@ -225,7 +221,9 @@
             if (!gameStarted) {
                 gameStarted = true;
             }
-            bird.velocity = bird.lift;
+            if (gameRunning) { // Only allow flapping if game is running
+                bird.velocity = bird.lift;
+            }
         }
 
         function endGame() {
@@ -237,6 +235,7 @@
         // Event Listeners
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
+                e.preventDefault(); // Prevent scrolling if spacebar is pressed
                 birdFlap();
             }
         });
