@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Flappy Bird</title>
+    <title>Flappy Bird Deluxe</title>
     <style>
         body {
             display: flex;
@@ -9,28 +9,52 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #70c5ce;
+            background-color: #70c5ce; /* Sky blue */
             overflow: hidden;
             font-family: 'Press Start 2P', cursive; /* Optional: Pixel font */
             color: white;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            flex-direction: column; /* Allow content to stack vertically */
+        }
+
+        #gameContainer {
+            position: relative; /* For positioning score and game over screen */
+            border: 5px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         #gameCanvas {
-            background-color: #000; /* You can change this to a lighter color or use an image */
-            border: 5px solid #333;
+            background-color: #4EC0CA; /* Lighter blue for game background */
             display: block;
         }
 
         #score {
             position: absolute;
             top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             font-size: 3em;
             z-index: 10;
+            text-align: center;
+            width: 100%;
+        }
+
+        #highScoreDisplay {
+            position: absolute;
+            top: 60px; /* Below the current score */
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.2em;
+            z-index: 10;
+            text-align: center;
+            width: 100%;
+            opacity: 0.8;
         }
 
         #gameOverScreen {
             position: absolute;
+            top: 0;
+            left: 0;
             display: none;
             flex-direction: column;
             justify-content: center;
@@ -43,13 +67,13 @@
         }
 
         #gameOverScreen h2 {
-            font-size: 4em;
-            margin-bottom: 20px;
+            font-size: 3.5em;
+            margin-bottom: 15px;
         }
 
         #gameOverScreen p {
-            font-size: 2em;
-            margin-bottom: 30px;
+            font-size: 1.8em;
+            margin-bottom: 25px;
         }
 
         #restartButton {
@@ -72,21 +96,27 @@
     </style>
 </head>
 <body>
-    <div id="score">0</div>
-    <canvas id="gameCanvas" width="288" height="512"></canvas>
+    <div id="gameContainer">
+        <div id="score">0</div>
+        <div id="highScoreDisplay">High Score: 0</div>
+        <canvas id="gameCanvas" width="288" height="512"></canvas>
 
-    <div id="gameOverScreen">
-        <h2>Game Over!</h2>
-        <p>Your Score: <span id="finalScore">0</span></p>
-        <button id="restartButton">Play Again</button>
+        <div id="gameOverScreen">
+            <h2>Game Over!</h2>
+            <p>Your Score: <span id="finalScore">0</span></p>
+            <p>High Score: <span id="finalHighScore">0</span></p>
+            <button id="restartButton">Play Again</button>
+        </div>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
         const gameOverScreen = document.getElementById('gameOverScreen');
         const finalScoreDisplay = document.getElementById('finalScore');
+        const finalHighScoreDisplay = document.getElementById('finalHighScore');
         const restartButton = document.getElementById('restartButton');
 
         // Game variables
@@ -98,39 +128,142 @@
             gravity: 0.2,
             lift: -4,
             velocity: 0,
-            frame: 0,
-            animation: [0, 1, 2, 1] // Simple flapping animation (if using sprites)
+            wingFrame: 0, // 0: wings up, 1: wings middle, 2: wings down
+            wingAnimationSpeed: 0.15 // Speed of automatic flapping
         };
 
         let pipes = [];
-        let pipeWidth = 52;
-        let pipeGap = 110; // This is the vertical gap for the bird to fly through
-        let pipeHorizontalSpacing = 160; // This controls the horizontal distance between pipes
+        const pipeWidth = 52;
+        const pipeGap = 120; // Increased vertical gap size for bird
+        const pipeHorizontalSpacing = 200; // Increased horizontal distance between pipes
         let frame = 0;
         let score = 0;
+        let highscore = 0;
         let gameRunning = true;
         let gameStarted = false; // To prevent immediate bird drop
 
-        // Draw functions (using rectangles for simplicity)
+        // --- Drawing Functions ---
+
         function drawBird() {
-            ctx.fillStyle = 'yellow';
-            ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+            ctx.fillStyle = 'yellow'; // Bird body color
+            ctx.strokeStyle = 'black'; // Bird outline
+            ctx.lineWidth = 1;
+
+            // Simple bird body
+            ctx.beginPath();
+            ctx.arc(bird.x + bird.width / 2, bird.y + bird.height / 2, bird.width / 2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Simple eye
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(bird.x + bird.width - 8, bird.y + 8, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Simple beak
+            ctx.fillStyle = 'orange';
+            ctx.beginPath();
+            ctx.moveTo(bird.x + bird.width, bird.y + bird.height / 2);
+            ctx.lineTo(bird.x + bird.width + 10, bird.y + bird.height / 2 - 5);
+            ctx.lineTo(bird.x + bird.width + 10, bird.y + bird.height / 2 + 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+
+            // Wings (simulate flapping)
+            ctx.fillStyle = 'gold'; // Wing color
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+
+            let wingYOffset = 0;
+            let wingXOffset = 0;
+            let wingAngle = 0; // In radians
+            let wingLength = 15;
+
+            // Adjust wing position based on wingFrame
+            // 0: Wings up
+            // 1: Wings slightly down
+            // 2: Wings fully down (for primary flap)
+            switch (Math.floor(bird.wingFrame)) {
+                case 0: // Wings up
+                    wingYOffset = -5;
+                    wingAngle = -Math.PI / 6; // Angle slightly up
+                    break;
+                case 1: // Wings middle (idle flap)
+                    wingYOffset = 0;
+                    wingAngle = 0;
+                    break;
+                case 2: // Wings down (strong flap)
+                    wingYOffset = 5;
+                    wingAngle = Math.PI / 6; // Angle slightly down
+                    break;
+            }
+
+            // Draw right wing
+            ctx.save();
+            ctx.translate(bird.x + bird.width / 2, bird.y + bird.height / 2 + wingYOffset);
+            ctx.rotate(wingAngle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(wingLength, -5);
+            ctx.lineTo(wingLength, 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // Draw left wing (mirrored)
+            ctx.save();
+            ctx.translate(bird.x + bird.width / 2, bird.y + bird.height / 2 + wingYOffset);
+            ctx.rotate(-wingAngle); // Mirrored angle
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-wingLength, -5); // Go left instead of right
+            ctx.lineTo(-wingLength, 5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
         }
 
         function drawPipes() {
             for (let i = 0; i < pipes.length; i++) {
                 let p = pipes[i];
-                ctx.fillStyle = 'green';
+
+                // Main pipe color
+                ctx.fillStyle = '#7AC74F'; // Green
+                ctx.strokeStyle = '#000'; // Black border
+                ctx.lineWidth = 2;
+
                 // Top pipe
                 ctx.fillRect(p.x, 0, pipeWidth, p.y);
+                ctx.strokeRect(p.x, 0, pipeWidth, p.y); // Border
+
+                // Top pipe cap
+                ctx.fillStyle = '#5A8E2E'; // Darker green for cap
+                ctx.fillRect(p.x - 5, p.y - 20, pipeWidth + 10, 20); // Cap width slightly wider
+                ctx.strokeRect(p.x - 5, p.y - 20, pipeWidth + 10, 20);
+
                 // Bottom pipe
+                ctx.fillStyle = '#7AC74F'; // Green
                 ctx.fillRect(p.x, p.y + pipeGap, pipeWidth, canvas.height - (p.y + pipeGap));
+                ctx.strokeRect(p.x, p.y + pipeGap, pipeWidth, canvas.height - (p.y + pipeGap)); // Border
+
+                // Bottom pipe cap
+                ctx.fillStyle = '#5A8E2E'; // Darker green for cap
+                ctx.fillRect(p.x - 5, p.y + pipeGap, pipeWidth + 10, 20); // Cap width slightly wider
+                ctx.strokeRect(p.x - 5, p.y + pipeGap, pipeWidth + 10, 20);
             }
         }
+
+        // --- Game Logic Functions ---
 
         function initGame() {
             bird.y = canvas.height / 2;
             bird.velocity = 0;
+            bird.wingFrame = 0; // Reset wing animation
             pipes = [];
             score = 0;
             scoreDisplay.textContent = score;
@@ -139,10 +272,12 @@
             gameOverScreen.style.display = 'none';
             frame = 0;
 
-            // Add initial pipes with good spacing
-            // We ensure the first pipe appears after a certain distance
-            addPipe(canvas.width + pipeHorizontalSpacing); // First pipe
-            addPipe(canvas.width + pipeHorizontalSpacing * 2); // Second pipe further out
+            // Load high score
+            highscore = localStorage.getItem('flappyBirdHighscore') || 0;
+            highScoreDisplay.textContent = `High Score: ${highscore}`;
+
+            // Add initial pipes well off-screen for a clear start
+            addPipe(canvas.width + pipeHorizontalSpacing * 1.5);
         }
 
         function updateGame() {
@@ -152,23 +287,22 @@
             if (gameStarted) {
                 bird.velocity += bird.gravity;
                 bird.y += bird.velocity;
+                // Update bird's idle flapping animation
+                bird.wingFrame = (bird.wingFrame + bird.wingAnimationSpeed) % 2; // Cycle between 0 and 1
             } else {
-                // Keep bird in place until game starts
-                bird.y = canvas.height / 2;
+                bird.y = canvas.height / 2; // Keep bird centered before start
             }
 
             // Ground/Ceiling collision
             if (bird.y + bird.height >= canvas.height || bird.y <= 0) {
                 endGame();
-                return; // Stop updating after game over
+                return;
             }
 
             // Pipe generation and movement
-            // Generate a new pipe when the last pipe is halfway across the screen
             if (pipes.length === 0 || (pipes[pipes.length - 1].x < canvas.width - pipeHorizontalSpacing && gameStarted)) {
                 addPipe(canvas.width);
             }
-
 
             for (let i = 0; i < pipes.length; i++) {
                 let p = pipes[i];
@@ -181,7 +315,7 @@
                     (bird.y < p.y || bird.y + bird.height > p.y + pipeGap)
                 ) {
                     endGame();
-                    return; // Stop updating after game over
+                    return;
                 }
 
                 // Remove off-screen pipes
@@ -190,15 +324,15 @@
                 }
 
                 // Score
-                // Check if the bird has passed the pipe's x position and hasn't scored yet
                 if (p.x + pipeWidth < bird.x && !p.scored) {
                     score++;
                     scoreDisplay.textContent = score;
-                    p.scored = true; // Mark as scored
+                    p.scored = true;
                 }
             }
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+            // Clear and redraw canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawPipes();
             drawBird();
 
@@ -208,7 +342,7 @@
 
         function addPipe(startX) {
             // Ensure there's always a valid gap for the bird
-            const minPipeHeight = 50; // Minimum height for top or bottom pipe
+            const minPipeHeight = 60; // Min height for top or bottom pipe (increased slightly)
             const maxPipeHeight = canvas.height - pipeGap - minPipeHeight; // Max height for top pipe to leave space for bottom pipe
             
             // Random Y position for the bottom of the top pipe
@@ -225,21 +359,31 @@
             if (!gameStarted) {
                 gameStarted = true;
             }
-            if (gameRunning) { // Only allow flapping if game is running
+            if (gameRunning) {
                 bird.velocity = bird.lift;
+                bird.wingFrame = 2; // Immediately set wing frame to 'down' for a strong visual flap
             }
         }
 
         function endGame() {
             gameRunning = false;
             finalScoreDisplay.textContent = score;
+            
+            // Update and display high score
+            if (score > highscore) {
+                highscore = score;
+                localStorage.setItem('flappyBirdHighscore', highscore);
+            }
+            finalHighScoreDisplay.textContent = highscore;
+            highScoreDisplay.textContent = `High Score: ${highscore}`; // Update main high score display
+
             gameOverScreen.style.display = 'flex';
         }
 
-        // Event Listeners
+        // --- Event Listeners ---
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
-                e.preventDefault(); // Prevent scrolling if spacebar is pressed
+                e.preventDefault(); // Prevent scrolling
                 birdFlap();
             }
         });
