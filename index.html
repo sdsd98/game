@@ -33,7 +33,7 @@
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 3em;
+            font-size: 3.5em; /* Slightly larger font for bigger canvas */
             z-index: 10;
             text-align: center;
             width: 100%;
@@ -41,10 +41,10 @@
 
         #highScoreDisplay {
             position: absolute;
-            top: 60px; /* Below the current score */
+            top: 75px; /* Adjusted position for larger score font */
             left: 50%;
             transform: translateX(-50%);
-            font-size: 1.2em;
+            font-size: 1.5em; /* Slightly larger font for bigger canvas */
             z-index: 10;
             text-align: center;
             width: 100%;
@@ -67,22 +67,22 @@
         }
 
         #gameOverScreen h2 {
-            font-size: 3.5em;
-            margin-bottom: 15px;
+            font-size: 4.5em; /* Larger game over text */
+            margin-bottom: 20px;
         }
 
         #gameOverScreen p {
-            font-size: 1.8em;
-            margin-bottom: 25px;
+            font-size: 2.2em; /* Larger score text */
+            margin-bottom: 30px;
         }
 
         #restartButton {
-            padding: 15px 30px;
-            font-size: 1.8em;
+            padding: 20px 40px; /* Larger button */
+            font-size: 2.2em; /* Larger button text */
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
@@ -99,9 +99,7 @@
     <div id="gameContainer">
         <div id="score">0</div>
         <div id="highScoreDisplay">High Score: 0</div>
-        <canvas id="gameCanvas" width="288" height="512"></canvas>
-
-        <div id="gameOverScreen">
+        <canvas id="gameCanvas" width="384" height="682"></canvas> <div id="gameOverScreen">
             <h2>Game Over!</h2>
             <p>Your Score: <span id="finalScore">0</span></p>
             <p>High Score: <span id="finalHighScore">0</span></p>
@@ -121,21 +119,21 @@
 
         // Game variables
         let bird = {
-            x: 50,
+            x: 75, // Adjusted position for bigger canvas
             y: canvas.height / 2,
-            width: 34,
-            height: 24,
-            gravity: 0.2,
-            lift: -4,
+            width: 45, // Bird size increased
+            height: 32, // Bird size increased
+            gravity: 0.25, // Adjusted for bigger canvas
+            lift: -5.5, // Adjusted for bigger canvas
             velocity: 0,
             wingFrame: 0, // 0: wings up, 1: wings middle, 2: wings down
             wingAnimationSpeed: 0.15 // Speed of automatic flapping
         };
 
         let pipes = [];
-        const pipeWidth = 52;
-        const pipeGap = 120; // Increased vertical gap size for bird
-        const pipeHorizontalSpacing = 200; // Increased horizontal distance between pipes
+        const pipeWidth = 65; // Pipe width increased
+        const pipeGap = 160; // Increased vertical gap for bird (adjusted for larger canvas)
+        const pipeHorizontalSpacing = 250; // Increased horizontal distance between pipes (adjusted for larger canvas)
         let frame = 0;
         let score = 0;
         let highscore = 0;
@@ -149,24 +147,24 @@
             ctx.strokeStyle = 'black'; // Bird outline
             ctx.lineWidth = 1;
 
-            // Simple bird body
+            // Simple bird body (slightly elliptical for better shape)
             ctx.beginPath();
-            ctx.arc(bird.x + bird.width / 2, bird.y + bird.height / 2, bird.width / 2 - 2, 0, Math.PI * 2);
+            ctx.ellipse(bird.x + bird.width / 2, bird.y + bird.height / 2, bird.width / 2, bird.height / 2, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
 
             // Simple eye
             ctx.fillStyle = 'black';
             ctx.beginPath();
-            ctx.arc(bird.x + bird.width - 8, bird.y + 8, 2, 0, Math.PI * 2);
+            ctx.arc(bird.x + bird.width - 12, bird.y + 10, 3, 0, Math.PI * 2);
             ctx.fill();
 
             // Simple beak
             ctx.fillStyle = 'orange';
             ctx.beginPath();
-            ctx.moveTo(bird.x + bird.width, bird.y + bird.height / 2);
-            ctx.lineTo(bird.x + bird.width + 10, bird.y + bird.height / 2 - 5);
-            ctx.lineTo(bird.x + bird.width + 10, bird.y + bird.height / 2 + 5);
+            ctx.moveTo(bird.x + bird.width, bird.y + bird.height / 2 - 5);
+            ctx.lineTo(bird.x + bird.width + 15, bird.y + bird.height / 2); // Longer beak
+            ctx.lineTo(bird.x + bird.width, bird.y + bird.height / 2 + 5);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
@@ -178,37 +176,37 @@
             ctx.lineWidth = 1;
 
             let wingYOffset = 0;
-            let wingXOffset = 0;
             let wingAngle = 0; // In radians
-            let wingLength = 15;
+            let wingLength = 25; // Longer wings
+            let wingStartOffset = 5; // Offset from bird body
 
             // Adjust wing position based on wingFrame
             // 0: Wings up
-            // 1: Wings slightly down
+            // 1: Wings middle (idle flap)
             // 2: Wings fully down (for primary flap)
             switch (Math.floor(bird.wingFrame)) {
                 case 0: // Wings up
-                    wingYOffset = -5;
-                    wingAngle = -Math.PI / 6; // Angle slightly up
+                    wingYOffset = -10; // More pronounced vertical movement
+                    wingAngle = -Math.PI / 4; // Angle slightly more up
                     break;
                 case 1: // Wings middle (idle flap)
-                    wingYOffset = 0;
-                    wingAngle = 0;
+                    wingYOffset = -2;
+                    wingAngle = -Math.PI / 8; // Slightly angled
                     break;
                 case 2: // Wings down (strong flap)
-                    wingYOffset = 5;
-                    wingAngle = Math.PI / 6; // Angle slightly down
+                    wingYOffset = 8; // More pronounced vertical movement
+                    wingAngle = Math.PI / 4; // Angle slightly more down
                     break;
             }
 
             // Draw right wing
             ctx.save();
-            ctx.translate(bird.x + bird.width / 2, bird.y + bird.height / 2 + wingYOffset);
+            ctx.translate(bird.x + bird.width / 2 + wingStartOffset, bird.y + bird.height / 2 + wingYOffset); // Start drawing outside the body
             ctx.rotate(wingAngle);
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.lineTo(wingLength, -5);
-            ctx.lineTo(wingLength, 5);
+            ctx.lineTo(wingLength, -8); // Wider wing
+            ctx.lineTo(wingLength, 8);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
@@ -216,12 +214,12 @@
 
             // Draw left wing (mirrored)
             ctx.save();
-            ctx.translate(bird.x + bird.width / 2, bird.y + bird.height / 2 + wingYOffset);
+            ctx.translate(bird.x + bird.width / 2 - wingStartOffset, bird.y + bird.height / 2 + wingYOffset); // Start drawing outside the body
             ctx.rotate(-wingAngle); // Mirrored angle
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.lineTo(-wingLength, -5); // Go left instead of right
-            ctx.lineTo(-wingLength, 5);
+            ctx.lineTo(-wingLength, -8); // Wider wing, goes left
+            ctx.lineTo(-wingLength, 8);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
@@ -243,8 +241,8 @@
 
                 // Top pipe cap
                 ctx.fillStyle = '#5A8E2E'; // Darker green for cap
-                ctx.fillRect(p.x - 5, p.y - 20, pipeWidth + 10, 20); // Cap width slightly wider
-                ctx.strokeRect(p.x - 5, p.y - 20, pipeWidth + 10, 20);
+                ctx.fillRect(p.x - 5, p.y - 25, pipeWidth + 10, 25); // Cap width slightly wider, increased height
+                ctx.strokeRect(p.x - 5, p.y - 25, pipeWidth + 10, 25);
 
                 // Bottom pipe
                 ctx.fillStyle = '#7AC74F'; // Green
@@ -253,8 +251,8 @@
 
                 // Bottom pipe cap
                 ctx.fillStyle = '#5A8E2E'; // Darker green for cap
-                ctx.fillRect(p.x - 5, p.y + pipeGap, pipeWidth + 10, 20); // Cap width slightly wider
-                ctx.strokeRect(p.x - 5, p.y + pipeGap, pipeWidth + 10, 20);
+                ctx.fillRect(p.x - 5, p.y + pipeGap, pipeWidth + 10, 25); // Cap width slightly wider, increased height
+                ctx.strokeRect(p.x - 5, p.y + pipeGap, pipeWidth + 10, 25);
             }
         }
 
@@ -304,9 +302,12 @@
                 addPipe(canvas.width);
             }
 
+            // Pipe speed adjusted for bigger canvas
+            const pipeSpeed = 3; 
+
             for (let i = 0; i < pipes.length; i++) {
                 let p = pipes[i];
-                p.x -= 2; // Pipe speed
+                p.x -= pipeSpeed; 
 
                 // Collision detection
                 if (
@@ -341,11 +342,9 @@
         }
 
         function addPipe(startX) {
-            // Ensure there's always a valid gap for the bird
-            const minPipeHeight = 60; // Min height for top or bottom pipe (increased slightly)
-            const maxPipeHeight = canvas.height - pipeGap - minPipeHeight; // Max height for top pipe to leave space for bottom pipe
+            const minPipeHeight = 80; 
+            const maxPipeHeight = canvas.height - pipeGap - minPipeHeight; 
             
-            // Random Y position for the bottom of the top pipe
             let pipeY = Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1)) + minPipeHeight;
 
             pipes.push({
